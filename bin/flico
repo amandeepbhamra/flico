@@ -1,0 +1,4 @@
+#!/usr/bin/env ruby
+$LOAD_PATH << './lib'
+require 'flico'
+Flico::CommandLineInterface.start(ARGV)
