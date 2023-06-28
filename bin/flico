@@ -1,4 +1,6 @@
 #!/usr/bin/env ruby
+# frozen_string_literal: true
+
 $LOAD_PATH << './lib'
 require 'flico'
 Flico::CommandLineInterface.start(ARGV)
