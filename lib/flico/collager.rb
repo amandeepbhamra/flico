@@ -1,44 +1,25 @@
 # frozen_string_literal: true
 
-require 'flico/grid'
 require 'mini_magick'
 
 module Flico
   class Collager
-    attr_reader :grid
+    attr_reader :images_url, :file_name
 
-    def initialize(grid = Grid.new)
-      @grid = grid
+    def initialize(images_url, file_name)
+      @images_url = images_url
+      @file_name = file_name
     end
 
-    def call(image_urls)
-      image_urls.map { |p| MiniMagick::Image.open p.path }
-      temp_file = Tempfile.new ['collage_maker', '.png']
-      MiniMagick::Tool::Convert.new do |i|
-        i.size "#{grid.canv_width}x#{grid.canv_height}"
-        i.xc 'white'
-        i << temp_file.path
-      end
-
-      image_urls.map.with_index do |path, idx|
-        image = MiniMagick::Image.open path.path
-        image.crop(grid.crop_rectangle(idx, image.width, image.height).to_mm)
-        image.resize(grid.resize_rectangle(idx, image.width, image.height).to_mm)
-        print_to_canvas(image, grid.cell_rectangle(idx), temp_file)
-      end
-      temp_file
-    end
-
-    private
-
-    def print_to_canvas(image, rectangle, temp_file)
-      canvas = MiniMagick::Image.new temp_file.path
-      result = canvas.composite(image) do |c|
-        c.compose 'Over'
-        c.geometry rectangle.to_mm
-      end
-      result.write temp_file.path
-      temp_file.rewind
+    def save
+      montage = MiniMagick::Tool::Montage.new
+      montage.density '600'
+      montage.tile '5X2'
+      montage.geometry '+10+20'
+      montage.border '5'
+      images_url.each { |image_url| montage << image_url }
+      montage << file_name
+      montage.call
     end
   end
 end

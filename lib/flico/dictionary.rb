@@ -2,23 +2,34 @@
 
 module Flico
   class Dictionary
-    def initialize(dictionary_path)
-      @dictionary_path = dictionary_path
+    PATH = '/usr/share/dict/words'
+    ALPHABETS_LOWER_LIMIT = 3
+    ALPHABETS_UPPER_LIMIT = 10
+
+    def initialize
+      @dictionary_path = validate(PATH)
       @words = []
     end
 
-    def call
-      @words.shift || dictionary_word
-    end
-
-    def append(keywords)
-      @words += keywords
+    def words(count)
+      @words += pick_words(count)
     end
 
     private
 
-    def dictionary_word
-      File.readlines("/usr/share/dict/words").select { |word| word.size > 3 && word.size < 10 }.sample.strip
+    def pick_words(count)
+      File.readlines(PATH).select do |word|
+        word.size > ALPHABETS_LOWER_LIMIT && word.size < ALPHABETS_UPPER_LIMIT
+      end.sample(count).map(&:strip)
+    end
+
+    def validate(path)
+      unless File.exist?(path)
+        warn "Exiting due to missing dictionary at path: #{path}"
+        exit 1
+      end
+
+      path
     end
   end
 end

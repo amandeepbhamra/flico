@@ -1,44 +1,51 @@
 # frozen_string_literal: true
 
+require 'flico/dictionary'
+require 'flico/collager'
+require 'flico/image_file'
+
 module Flico
   class ApplicationError < StandardError; end
-  class KeywordMissing < StandardError; end
-  class NoImage < StandardError; end
-  class FetchingError < StandardError; end
 
   class App
-    attr_reader :resources
+    KEYWORDS_COUNT = 10
 
-    def initialize(resources)
-      @resources = resources
+    attr_reader :keywords, :options
+
+    def initialize(keywords, options)
+      @keywords = add_missing_keywords(keywords)
+      @options = options
     end
 
-    def create_collage
-      image_urls = []
-      loop do
-        image_urls.push get_images
-        break unless image_urls.count < 10
-      end
-      collage(image_urls)
+    def create
+      options[:file_name] = prepare_file_name(options)
+
+      Collager.new(prepare_images, options[:file_name]).save
+
+      puts "Flicollage saved at #{options[:file_name]}"
     end
 
-    def collage(images)
-      resources.save_collage.call(resources.collager.call(images))
+    def prepare_images
+      keywords.map { |keyword| ImageFile.new(keyword).fetch_from_flickr }
     end
 
-    def get_images
-      keyword           = resources.dictionary.call
-      image_url         = resources.flickr_api.call(keyword)
-      resources.fetch_image.call(image_url)
-    rescue NoImage => e
-      puts "Image not found for keyword '#{keyword}'. Message: #{e.message}. Retrying"
-      unless (tries -= 1).positive?
-        raise ApplicationError, "Failed getting image after retrying #{MAX_KEYWORD_RETRIES} times"
-      end
+    private
 
-      retry
-    rescue FetchingError => e
-      raise ApplicationError, e.message
+    def add_missing_keywords(words)
+      words_count = words.size
+      return words if words_count == KEYWORDS_COUNT
+
+      words += Dictionary.new.words(KEYWORDS_COUNT - words_count)
+      puts "KEYWORDS: #{words}"
+      words
+    end
+
+    def prepare_file_name(options)
+      return options[:file_name] unless options[:file_name].nil?
+
+      puts 'Enter file name for collage (press ENTER to use default)'
+      file_name = $stdin.gets.strip
+      file_name.empty? ? "flicollage-#{Time.now.strftime('%Y%m%d%H%M%S')}.png" : file_name
     end
   end
 end
